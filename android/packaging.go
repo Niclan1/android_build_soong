@@ -508,6 +508,26 @@ func (p *PackagingBase) AddDeps(ctx BottomUpMutatorContext, depTag blueprint.Dep
 			targetVariation = append(targetVariation, rustLibDylibVariation)
 		}
 
+		// Excluded modules can have fewer architectures than this package.
+		// Follow an existing variant for its excluded transitive install specs,
+		// without inventing a second (for example arm64) variant of a 32-bit HAL.
+		// Preserve the usual diagnostic if no supported variant exists at all.
+		if depType == overridden && !ctx.OtherModuleDependencyVariantExists(targetVariation, dep) {
+			for _, supported := range getSupportedTargets(ctx) {
+				variations := supported.Variations()
+				if ctx.OtherModuleDependencyVariantExists(append(variations, sharedVariation), dep) {
+					targetVariation = append(variations, sharedVariation)
+					break
+				} else if ctx.OtherModuleDependencyVariantExists(append(variations, rustLibDylibVariation), dep) {
+					targetVariation = append(variations, rustLibDylibVariation)
+					break
+				} else if ctx.OtherModuleDependencyVariantExists(variations, dep) {
+					targetVariation = variations
+					break
+				}
+			}
+		}
+
 		var depTagToUse blueprint.DependencyTag
 		switch depType {
 		case regular:

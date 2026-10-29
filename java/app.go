@@ -1428,7 +1428,7 @@ func collectJniDeps(ctx android.ModuleContext,
 					}
 
 					jniLibs = append(jniLibs, jniLib{
-						name:           ctx.OtherModuleName(module),
+						name:           commonInfo.BaseModuleName,
 						path:           path,
 						target:         commonInfo.Target,
 						coverageFile:   dep.CoverageOutputFile,

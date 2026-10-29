@@ -215,6 +215,13 @@ func (pb PrimaryBuilderFactory) primaryBuilderInvocation(config Config) bootstra
 
 	commonArgs = append(commonArgs, "-l", filepath.Join(pb.config.FileListDir(), "Android.bp.list"))
 	invocationEnv := make(map[string]string)
+	// Host resource controls affect execution cost, not the generated graph.
+	// The graph builder starts with env -i, so inherit only these Go controls.
+	for _, key := range []string{"GOMEMLIMIT", "GOGC", "GOMAXPROCS"} {
+		if value, ok := pb.config.Environment().Get(key); ok {
+			invocationEnv[key] = value
+		}
+	}
 	if pb.debugPort != "" {
 		//debug mode
 		commonArgs = append(commonArgs, "--delve_listen", pb.debugPort,

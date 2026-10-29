@@ -714,3 +714,30 @@ func TestOverrides(t *testing.T) {
 		runPackagingTest(t, config, bp, tc.expected)
 	}
 }
+
+// A cross-partition override must retain an exclusion dependency even when
+// the filesystem package normally collects only the primary (64-bit) target.
+func TestPackagingOverridden32BitBinaryInMultilibPackage(t *testing.T) {
+	for _, firstOnly := range []bool{false, true} {
+		expected := []string{"lib64/replacement"}
+		if !firstOnly {
+			expected = append(expected, "lib32/replacement")
+		}
+		runPackagingTest(t, testConfig{multiTarget: true, depsCollectFirstTargetOnly: firstOnly}, `
+			component {
+				name: "legacy",
+				compile_multilib: "32",
+			}
+			component {
+				name: "replacement",
+				compile_multilib: "both",
+			}
+			package_module {
+				name: "package",
+				compile_multilib: "both",
+				deps: ["replacement"],
+				overridden_deps: ["legacy"],
+			}
+		`, expected)
+	}
+}

@@ -327,3 +327,38 @@ func TestJniAsRequiredDeps(t *testing.T) {
 		android.AssertDeepEquals(t, "unexpected required deps", tc.expected, required)
 	}
 }
+
+func TestPreferredPrebuiltJniMakeRequirement(t *testing.T) {
+	t.Parallel()
+	for _, prefer := range []string{"false", "true"} {
+		t.Run(prefer, func(t *testing.T) {
+			result := android.GroupFixturePreparers(prepareForJavaAndroidMkTest,
+				android.MockFS{"libjni.so": nil}.AddToFixture(),
+			).RunTestWithBp(t, cc.GatherRequiredDepsForTest(android.Android)+`
+				cc_library_shared {
+					name: "libjni",
+					system_shared_libs: [],
+					stl: "none",
+				}
+				cc_prebuilt_library_shared {
+					name: "libjni",
+					srcs: ["libjni.so"],
+					prefer: `+prefer+`,
+					system_shared_libs: [],
+					stl: "none",
+				}
+				android_app {
+					name: "jni_app",
+					platform_apis: true,
+					compile_multilib: "both",
+					jni_libs: ["libjni"],
+					use_embedded_native_libs: false,
+				}
+			`)
+			mod := result.ModuleForTests(t, "jni_app", "android_common").Module()
+			info := android.AndroidMkInfoForTest(t, result.TestContext, mod)
+			android.AssertDeepEquals(t, "JNI dependencies use the exported Make name",
+				[]string{"libjni:64", "libjni:32"}, info.PrimaryInfo.EntryMap["LOCAL_REQUIRED_MODULES"])
+		})
+	}
+}
